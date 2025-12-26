@@ -23,3 +23,11 @@ class EmployeeRead(EmployeeBase):
 
     class Config:
         from_attributes = True
+
+class EmployeeSearchRequest(BaseModel):
+    query: str
+    limit: int = 5
+
+class EmployeeSearchResult(EmployeeRead):
+    similarity_score: float
+    distance: float

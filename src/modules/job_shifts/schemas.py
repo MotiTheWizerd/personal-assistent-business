@@ -23,3 +23,10 @@ class JobShiftRead(JobShiftBase):
 
     class Config:
         from_attributes = True
+
+class JobShiftSearch(BaseModel):
+    manager_id: UUID
+    employee_id: Optional[UUID] = None
+    client_id: Optional[UUID] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None

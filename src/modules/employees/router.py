@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import os
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
 
 from src.database import get_db
-from src.modules.employees.schemas import EmployeeCreate, EmployeeRead
+from src.modules.employees.schemas import EmployeeCreate, EmployeeRead, EmployeeSearchRequest, EmployeeSearchResult
 from src.modules.employees.service import EmployeeService
+from src.modules.embeddings.service import GeminiEmbeddingService
 
 router = APIRouter(
     prefix="/employees",
@@ -24,8 +26,18 @@ def get_event_bus():
     from src.main import event_bus
     return event_bus
 
-def get_service(db: Session = Depends(get_db), event_bus: EventBus = Depends(get_event_bus)) -> EmployeeService:
-    return EmployeeService(db, event_bus)
+def get_embedding_service():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+    return GeminiEmbeddingService(api_key=api_key)
+
+def get_service(
+    db: Session = Depends(get_db), 
+    event_bus: EventBus = Depends(get_event_bus),
+    embedding_service: GeminiEmbeddingService = Depends(get_embedding_service)
+) -> EmployeeService:
+    return EmployeeService(db, event_bus, embedding_service)
 
 @router.post("/", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED)
 def create_employee(
@@ -42,3 +54,13 @@ def create_employee(
 @router.get("/", response_model=List[EmployeeRead])
 def read_employees(skip: int = 0, limit: int = 100, service: EmployeeService = Depends(get_service)):
     return service.get_employees(skip=skip, limit=limit)
+
+@router.post("/general-semantic-search", response_model=List[EmployeeSearchResult])
+def search_employees(
+    request: EmployeeSearchRequest,
+    service: EmployeeService = Depends(get_service)
+):
+    """
+    Search for employees using semantic search on their profile embedding.
+    """
+    return service.search_employees(query=request.query, limit=request.limit)

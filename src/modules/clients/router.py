@@ -1,19 +1,31 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import os
 from sqlalchemy.orm import Session
 from typing import List
 
 from src.database import get_db
-from src.modules.clients.schemas import ClientCreate, ClientRead
+from src.modules.clients.schemas import ClientCreate, ClientRead, ClientSearchRequest, ClientSearchResult
 from src.modules.clients.service import ClientService
 from src.modules.shared.domain.bus import EventBus
+from src.modules.embeddings.service import GeminiEmbeddingService
 
 # Defer import of event_bus to avoid circular dependency, same pattern as employees
 def get_event_bus():
     from src.main import event_bus
     return event_bus
 
-def get_service(db: Session = Depends(get_db), event_bus: EventBus = Depends(get_event_bus)) -> ClientService:
-    return ClientService(db, event_bus)
+def get_embedding_service():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+    return GeminiEmbeddingService(api_key=api_key)
+
+def get_service(
+    db: Session = Depends(get_db), 
+    event_bus: EventBus = Depends(get_event_bus),
+    embedding_service: GeminiEmbeddingService = Depends(get_embedding_service)
+) -> ClientService:
+    return ClientService(db, event_bus, embedding_service)
 
 router = APIRouter(
     prefix="/clients",
@@ -34,3 +46,13 @@ def create_client(
 @router.get("/", response_model=List[ClientRead])
 def read_clients(skip: int = 0, limit: int = 100, service: ClientService = Depends(get_service)):
     return service.get_clients(skip=skip, limit=limit)
+
+@router.post("/general-semantic-search", response_model=List[ClientSearchResult])
+def search_clients(
+    request: ClientSearchRequest,
+    service: ClientService = Depends(get_service)
+):
+    """
+    Search for clients using semantic search on their profile embedding.
+    """
+    return service.search_clients(query=request.query, limit=request.limit)

@@ -20,3 +20,11 @@ class ClientRead(ClientBase):
 
     class Config:
         from_attributes = True
+
+class ClientSearchRequest(BaseModel):
+    query: str
+    limit: int = 5
+
+class ClientSearchResult(ClientRead):
+    similarity_score: float
+    distance: float

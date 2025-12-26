@@ -3,11 +3,13 @@ from src.modules.clients.models import ClientModel
 from src.modules.clients.schemas import ClientCreate
 from src.modules.shared.domain.bus import EventBus
 from src.modules.clients.events import ClientCreated
+from src.modules.embeddings.service import GeminiEmbeddingService
 
 class ClientService:
-    def __init__(self, db: Session, event_bus: EventBus):
+    def __init__(self, db: Session, event_bus: EventBus, embedding_service: GeminiEmbeddingService):
         self.db = db
         self.event_bus = event_bus
+        self.embedding_service = embedding_service
 
     def create_client(self, client: ClientCreate) -> ClientModel:
         db_client = ClientModel(
@@ -33,3 +35,25 @@ class ClientService:
 
     def get_client_by_email(self, email: str) -> ClientModel | None:
         return self.db.query(ClientModel).filter(ClientModel.email == email).first()
+
+    def search_clients(self, query: str, limit: int = 5) -> list[ClientModel]:
+        # Generate embedding for the query
+        query_embedding = self.embedding_service.embed_text(query)
+        
+        # Search for similar clients using cosine distance
+        distance_col = ClientModel.embedding.cosine_distance(query_embedding)
+        
+        results = self.db.query(ClientModel, distance_col)\
+            .order_by(distance_col)\
+            .limit(limit)\
+            .all()
+        
+        # Convert to list of dicts with similarity score and distance
+        return [
+            {
+                **client.__dict__, 
+                "similarity_score": 1 - distance,
+                "distance": distance
+            }
+            for client, distance in results
+        ]
