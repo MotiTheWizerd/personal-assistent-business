@@ -12,6 +12,9 @@ class ManagerService:
     def get_password_hash(self, password: str) -> str:
         return pwd_context.hash(password)
 
+    def verify_password(self, plain_password: str, hashed_password: str) -> bool:
+        return pwd_context.verify(plain_password, hashed_password)
+
     def create_manager(self, manager: ManagerCreate):
         hashed_password = self.get_password_hash(manager.password)
         db_manager = ManagerModel(
@@ -31,3 +34,11 @@ class ManagerService:
 
     def get_manager_by_email(self, email: str):
         return self.db.query(ManagerModel).filter(ManagerModel.email == email).first()
+
+    def authenticate_manager(self, email: str, password: str):
+        manager = self.get_manager_by_email(email=email)
+        if not manager:
+            return None
+        if not self.verify_password(password, manager.password):
+            return None
+        return manager

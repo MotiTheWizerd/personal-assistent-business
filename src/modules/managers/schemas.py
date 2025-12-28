@@ -13,6 +13,14 @@ class ManagerBase(BaseModel):
 class ManagerCreate(ManagerBase):
     password: str
 
+class ManagerLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
 class ManagerRead(ManagerBase):
     id: UUID
     default_rate: float

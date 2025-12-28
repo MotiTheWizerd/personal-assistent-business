@@ -8,6 +8,7 @@ class ClientBase(BaseModel):
     mobile: str
     email: EmailStr
     client_description: str
+    default_rate: float = 0.0
 
 class ClientCreate(ClientBase):
     manager_id: UUID

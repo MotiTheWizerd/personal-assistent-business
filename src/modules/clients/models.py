@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, Float
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,6 +14,7 @@ class ClientModel(Base):
     mobile = Column(String)
     email = Column(String, unique=True, index=True)
     client_description = Column(String)
+    default_rate = Column(Float, default=0.0)
     
     manager_id = Column(UUID(as_uuid=True), ForeignKey("managers.id"))
     manager = relationship("ManagerModel", back_populates="clients")

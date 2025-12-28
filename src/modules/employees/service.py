@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_
 from src.modules.employees.models import EmployeeModel
 from src.modules.employees.schemas import EmployeeCreate
@@ -6,6 +6,7 @@ from src.modules.shared.domain.bus import EventBus
 from src.modules.employees.events import EmployeeCreated
 from uuid import UUID
 from src.modules.embeddings.service import GeminiEmbeddingService
+from src.modules.shared.rates import resolve_rate
 
 class EmployeeService:
     def __init__(self, db: Session, event_bus: EventBus, embedding_service: GeminiEmbeddingService):
@@ -33,7 +34,14 @@ class EmployeeService:
         return db_employee
 
     def get_employees(self, skip: int = 0, limit: int = 100) -> list[EmployeeModel]:
-        return self.db.query(EmployeeModel).offset(skip).limit(limit).all()
+        employees = (
+            self.db.query(EmployeeModel)
+            .options(joinedload(EmployeeModel.manager))
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+        return self._apply_effective_rates(employees)
 
     def get_employee_by_email(self, email: str) -> EmployeeModel | None:
         return self.db.query(EmployeeModel).filter(EmployeeModel.email == email).first()
@@ -58,7 +66,7 @@ class EmployeeService:
         # Convert to list of dicts with similarity score and distance
         return [
             {
-                **employee.__dict__, 
+                **employee.__dict__,
                 "similarity_score": 1 - distance,
                 "distance": distance
             }
@@ -73,7 +81,7 @@ class EmployeeService:
         email: str = None,
         nickname: str = None
     ) -> list[EmployeeModel]:
-        query = self.db.query(EmployeeModel)
+        query = self.db.query(EmployeeModel).options(joinedload(EmployeeModel.manager))
         
         if manager_id:
             query = query.filter(EmployeeModel.manager_id == manager_id)
@@ -86,7 +94,7 @@ class EmployeeService:
         if nickname:
             query = query.filter(EmployeeModel.nickname.ilike(f"%{nickname}%"))
             
-        return query.all()
+        return self._apply_effective_rates(query.all())
 
     def search_employees_text(
         self,
@@ -94,7 +102,7 @@ class EmployeeService:
         manager_id: UUID = None,
         limit: int = 10
     ) -> list[EmployeeModel]:
-        base_query = self.db.query(EmployeeModel)
+        base_query = self.db.query(EmployeeModel).options(joinedload(EmployeeModel.manager))
 
         if manager_id:
             base_query = base_query.filter(EmployeeModel.manager_id == manager_id)
@@ -105,4 +113,15 @@ class EmployeeService:
             EmployeeModel.nickname.ilike(f"%{query}%")
         )
 
-        return base_query.filter(text_filter).limit(limit).all()
+        return self._apply_effective_rates(base_query.filter(text_filter).limit(limit).all())
+
+    def _apply_effective_rates(self, employees: list[EmployeeModel]) -> list[EmployeeModel]:
+        for employee in employees:
+            effective_rate = resolve_rate(
+                employee_rate=getattr(employee, "default_rate", None),
+                manager_rate=getattr(employee.manager, "default_rate", None) if employee.manager else None,
+            )
+            employee.effective_rate = effective_rate
+            if employee.default_rate is None or employee.default_rate == 0:
+                employee.default_rate = effective_rate
+        return employees

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from src.modules.job_shifts.models import JobShiftModel
 from src.modules.job_shifts.schemas import JobShiftCreate
+from src.modules.shared.rates import resolve_rate
 from uuid import UUID
 
 class JobShiftService:
@@ -17,11 +18,43 @@ class JobShiftService:
         self.db.refresh(db_shift)
         return db_shift
 
+    def _apply_effective_rates(self, shifts: list[JobShiftModel]) -> list[JobShiftModel]:
+        for shift in shifts:
+            shift.effective_rate = resolve_rate(
+                client_rate=getattr(shift.client, "default_rate", None) if shift.client else None,
+                employee_rate=getattr(shift.employee, "default_rate", None) if shift.employee else None,
+                manager_rate=getattr(shift.manager, "default_rate", None) if shift.manager else None,
+            )
+        return shifts
+
     def get_shifts(self, skip: int = 0, limit: int = 100) -> list[JobShiftModel]:
-        return self.db.query(JobShiftModel).offset(skip).limit(limit).all()
+        shifts = (
+            self.db.query(JobShiftModel)
+            .options(
+                joinedload(JobShiftModel.client),
+                joinedload(JobShiftModel.employee),
+                joinedload(JobShiftModel.manager),
+            )
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+        return self._apply_effective_rates(shifts)
 
     def get_shifts_by_manager(self, manager_id: UUID, skip: int = 0, limit: int = 100) -> list[JobShiftModel]:
-        return self.db.query(JobShiftModel).filter(JobShiftModel.manager_id == manager_id).offset(skip).limit(limit).all()
+        shifts = (
+            self.db.query(JobShiftModel)
+            .options(
+                joinedload(JobShiftModel.client),
+                joinedload(JobShiftModel.employee),
+                joinedload(JobShiftModel.manager),
+            )
+            .filter(JobShiftModel.manager_id == manager_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+        return self._apply_effective_rates(shifts)
 
     def get_shifts_by_params(
         self, 
@@ -40,7 +73,11 @@ class JobShiftService:
             start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
             end_date = start_date + timedelta(days=30)
             
-        query = self.db.query(JobShiftModel).filter(
+        query = self.db.query(JobShiftModel).options(
+            joinedload(JobShiftModel.client),
+            joinedload(JobShiftModel.employee),
+            joinedload(JobShiftModel.manager),
+        ).filter(
             JobShiftModel.manager_id == manager_id,
             JobShiftModel.start_date >= start_date,
             JobShiftModel.start_date <= end_date
@@ -51,7 +88,7 @@ class JobShiftService:
         if client_id:
             query = query.filter(JobShiftModel.client_id == client_id)
             
-        return query.all()
+        return self._apply_effective_rates(query.all())
 
     def get_schedule_by_params(
         self,
@@ -62,7 +99,8 @@ class JobShiftService:
     ) -> list[JobShiftModel]:
         query = self.db.query(JobShiftModel).options(
             joinedload(JobShiftModel.client),
-            joinedload(JobShiftModel.employee)
+            joinedload(JobShiftModel.employee),
+            joinedload(JobShiftModel.manager),
         )
 
         if manager_id:
@@ -80,4 +118,4 @@ class JobShiftService:
         elif end_date:
             query = query.filter(JobShiftModel.start_date <= end_date)
 
-        return query.all()
+        return self._apply_effective_rates(query.all())

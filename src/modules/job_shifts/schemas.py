@@ -7,6 +7,7 @@ class JobShiftBase(BaseModel):
     start_date: datetime
     end_date: datetime
     is_paid: bool = False
+    effective_rate: Optional[float] = None
 
 class JobShiftCreate(JobShiftBase):
     manager_id: UUID

@@ -17,6 +17,7 @@ class EmployeeCreate(EmployeeBase):
 class EmployeeRead(EmployeeBase):
     id: UUID
     default_rate: float
+    effective_rate: Optional[float] = None
     manager_id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
