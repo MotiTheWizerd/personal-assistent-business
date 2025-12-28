@@ -20,3 +20,4 @@ class ManagerModel(Base):
 
     employees = relationship("EmployeeModel", back_populates="manager")
     clients = relationship("ClientModel", back_populates="manager")
+    agents = relationship("AgentModel", back_populates="manager")

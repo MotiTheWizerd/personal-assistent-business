@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from src.database import get_db
-from src.modules.clients.schemas import ClientCreate, ClientRead, ClientSearchRequest, ClientSearchResult
+from src.modules.clients.schemas import ClientCreate, ClientRead, ClientSearchRequest, ClientSearchResult, ClientFindRequest, ClientTextSearchRequest
 from src.modules.clients.service import ClientService
 from src.modules.shared.domain.bus import EventBus
 from src.modules.embeddings.service import GeminiEmbeddingService
@@ -56,3 +56,30 @@ def search_clients(
     Search for clients using semantic search on their profile embedding.
     """
     return service.search_clients(query=request.query, limit=request.limit)
+
+@router.post("/text-search", response_model=List[ClientRead])
+def search_clients_text(
+    request: ClientTextSearchRequest,
+    service: ClientService = Depends(get_service)
+):
+    return service.search_clients_text(
+        query=request.query,
+        manager_id=request.manager_id,
+        limit=request.limit
+    )
+
+@router.post("/FindClients", response_model=List[ClientRead])
+def find_clients(
+    search_params: ClientFindRequest,
+    service: ClientService = Depends(get_service)
+):
+    """
+    Find clients based on various parameters (manager_id, client_name, email, mobile, client_description).
+    """
+    return service.get_clients_by_params(
+        manager_id=search_params.manager_id,
+        client_name=search_params.client_name,
+        email=search_params.email,
+        mobile=search_params.mobile,
+        client_description=search_params.client_description
+    )

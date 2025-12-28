@@ -28,3 +28,15 @@ class ClientSearchRequest(BaseModel):
 class ClientSearchResult(ClientRead):
     similarity_score: float
     distance: float
+
+class ClientFindRequest(BaseModel):
+    manager_id: Optional[UUID] = None
+    client_name: Optional[str] = None
+    email: Optional[str] = None
+    mobile: Optional[str] = None
+    client_description: Optional[str] = None
+
+class ClientTextSearchRequest(BaseModel):
+    query: str
+    manager_id: Optional[UUID] = None
+    limit: int = 10

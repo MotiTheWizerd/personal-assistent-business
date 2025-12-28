@@ -22,7 +22,7 @@ def verify_api():
 
     try:
         # 1. Create Manager
-        url = "http://localhost:8001/managers/"
+        url = "http://localhost:8001/api/managers/"
         data = {
             "first_name": "Test",
             "last_name": "Manager",
@@ -46,7 +46,7 @@ def verify_api():
             assert "password" not in result # Password should not be returned
 
         # 2. List Managers
-        with urllib.request.urlopen("http://localhost:8001/managers/") as response:
+        with urllib.request.urlopen("http://localhost:8001/api/managers/") as response:
             result = json.loads(response.read().decode())
             print("List API Response:", result)
             assert len(result) >= 1

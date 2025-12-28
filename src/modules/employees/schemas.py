@@ -31,3 +31,15 @@ class EmployeeSearchRequest(BaseModel):
 class EmployeeSearchResult(EmployeeRead):
     similarity_score: float
     distance: float
+
+class EmployeeFindRequest(BaseModel):
+    manager_id: Optional[UUID] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    nickname: Optional[str] = None
+
+class EmployeeTextSearchRequest(BaseModel):
+    query: str
+    manager_id: Optional[UUID] = None
+    limit: int = 10

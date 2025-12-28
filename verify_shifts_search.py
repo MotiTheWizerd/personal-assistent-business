@@ -83,13 +83,13 @@ def main():
         response = requests.post(f"{base_url}/job_shifts/", json=shift_data)
         check(response, 201)
 
-    # 5. Test FindShiftsByEmployee with defaults
-    print("\n5. Testing FindShiftsByEmployee with defaults (expecting 2 shifts within 30 days)...")
+    # 5. Test FindShifts with defaults
+    print("\n5. Testing FindShifts with defaults (expecting 2 shifts within 30 days)...")
     search_data = {
         "manager_id": manager_id,
         "employee_id": employee_id
     }
-    response = requests.post(f"{base_url}/job_shifts/FindShiftsByEmployee", json=search_data)
+    response = requests.post(f"{base_url}/job_shifts/FindShifts", json=search_data)
     results = check(response)
     print(f"Found {len(results)} shifts")
     if len(results) != 2:
@@ -104,7 +104,7 @@ def main():
         "start_date": (now + timedelta(days=35)).isoformat(),
         "end_date": (now + timedelta(days=45)).isoformat()
     }
-    response = requests.post(f"{base_url}/job_shifts/FindShiftsByEmployee", json=search_data)
+    response = requests.post(f"{base_url}/job_shifts/FindShifts", json=search_data)
     results = check(response)
     print(f"Found {len(results)} shifts")
     if len(results) != 1:
@@ -117,14 +117,14 @@ def main():
         "manager_id": manager_id,
         "client_id": client_id
     }
-    response = requests.post(f"{base_url}/job_shifts/FindShiftsByEmployee", json=search_data)
+    response = requests.post(f"{base_url}/job_shifts/FindShifts", json=search_data)
     results = check(response)
     print(f"Found {len(results)} shifts (weighted by manager/client)...")
     if len(results) != 2:
         print(f"FAILED: Expected 2 shifts, found {len(results)}")
         sys.exit(1)
 
-    print("\nSUCCESS: FindShiftsByEmployee verification passed!")
+    print("\nSUCCESS: FindShifts verification passed!")
 
 if __name__ == "__main__":
     main()

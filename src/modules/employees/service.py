@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from src.modules.employees.models import EmployeeModel
 from src.modules.employees.schemas import EmployeeCreate
 from src.modules.shared.domain.bus import EventBus
 from src.modules.employees.events import EmployeeCreated
+from uuid import UUID
 from src.modules.embeddings.service import GeminiEmbeddingService
 
 class EmployeeService:
@@ -62,3 +64,45 @@ class EmployeeService:
             }
             for employee, distance in results
         ]
+
+    def get_employees_by_params(
+        self,
+        manager_id: UUID,
+        first_name: str = None,
+        last_name: str = None,
+        email: str = None,
+        nickname: str = None
+    ) -> list[EmployeeModel]:
+        query = self.db.query(EmployeeModel)
+        
+        if manager_id:
+            query = query.filter(EmployeeModel.manager_id == manager_id)
+        if first_name:
+            query = query.filter(EmployeeModel.first_name.ilike(f"%{first_name}%"))
+        if last_name:
+            query = query.filter(EmployeeModel.last_name.ilike(f"%{last_name}%"))
+        if email:
+            query = query.filter(EmployeeModel.email.ilike(f"%{email}%"))
+        if nickname:
+            query = query.filter(EmployeeModel.nickname.ilike(f"%{nickname}%"))
+            
+        return query.all()
+
+    def search_employees_text(
+        self,
+        query: str,
+        manager_id: UUID = None,
+        limit: int = 10
+    ) -> list[EmployeeModel]:
+        base_query = self.db.query(EmployeeModel)
+
+        if manager_id:
+            base_query = base_query.filter(EmployeeModel.manager_id == manager_id)
+
+        text_filter = or_(
+            EmployeeModel.first_name.ilike(f"%{query}%"),
+            EmployeeModel.last_name.ilike(f"%{query}%"),
+            EmployeeModel.nickname.ilike(f"%{query}%")
+        )
+
+        return base_query.filter(text_filter).limit(limit).all()

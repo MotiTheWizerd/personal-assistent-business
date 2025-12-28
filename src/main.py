@@ -1,5 +1,6 @@
 import os
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from src.database import engine, Base
@@ -24,6 +25,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Initialize Event Bus
 event_bus = InMemoryEventBus()
 
@@ -42,11 +52,14 @@ if api_key:
 else:
     print("WARNING: GEMINI_API_KEY not found. Embeddings will not be generated.")
 
-app.include_router(managers_router)
-app.include_router(employees_router)
-app.include_router(clients_router)
+app.include_router(managers_router, prefix="/api")
+app.include_router(employees_router, prefix="/api")
+app.include_router(clients_router, prefix="/api")
 from src.modules.job_shifts.router import router as job_shifts_router
-app.include_router(job_shifts_router)
+app.include_router(job_shifts_router, prefix="/api")
+
+from src.modules.agents.router import router as agents_router
+app.include_router(agents_router, prefix="/api")
 
 @app.get("/")
 def read_root():

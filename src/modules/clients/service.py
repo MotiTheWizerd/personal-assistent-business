@@ -1,8 +1,10 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from src.modules.clients.models import ClientModel
 from src.modules.clients.schemas import ClientCreate
 from src.modules.shared.domain.bus import EventBus
 from src.modules.clients.events import ClientCreated
+from uuid import UUID
 from src.modules.embeddings.service import GeminiEmbeddingService
 
 class ClientService:
@@ -57,3 +59,46 @@ class ClientService:
             }
             for client, distance in results
         ]
+
+    def get_clients_by_params(
+        self,
+        manager_id: UUID = None,
+        client_name: str = None,
+        email: str = None,
+        mobile: str = None,
+        client_description: str = None
+    ) -> list[ClientModel]:
+        query = self.db.query(ClientModel)
+        
+        if manager_id:
+            query = query.filter(ClientModel.manager_id == manager_id)
+        if client_name:
+            query = query.filter(ClientModel.client_name.ilike(f"%{client_name}%"))
+        if email:
+            query = query.filter(ClientModel.email.ilike(f"%{email}%"))
+        if mobile:
+            query = query.filter(ClientModel.mobile.ilike(f"%{mobile}%"))
+        if client_description:
+            query = query.filter(ClientModel.client_description.ilike(f"%{client_description}%"))
+            
+        return query.all()
+
+    def search_clients_text(
+        self,
+        query: str,
+        manager_id: UUID = None,
+        limit: int = 10
+    ) -> list[ClientModel]:
+        base_query = self.db.query(ClientModel)
+
+        if manager_id:
+            base_query = base_query.filter(ClientModel.manager_id == manager_id)
+
+        text_filter = or_(
+            ClientModel.client_name.ilike(f"%{query}%"),
+            ClientModel.email.ilike(f"%{query}%"),
+            ClientModel.mobile.ilike(f"%{query}%"),
+            ClientModel.client_description.ilike(f"%{query}%")
+        )
+
+        return base_query.filter(text_filter).limit(limit).all()

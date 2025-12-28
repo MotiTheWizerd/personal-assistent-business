@@ -5,7 +5,7 @@ from typing import List
 from uuid import UUID
 
 from src.database import get_db
-from src.modules.employees.schemas import EmployeeCreate, EmployeeRead, EmployeeSearchRequest, EmployeeSearchResult
+from src.modules.employees.schemas import EmployeeCreate, EmployeeRead, EmployeeSearchRequest, EmployeeSearchResult, EmployeeFindRequest, EmployeeTextSearchRequest
 from src.modules.employees.service import EmployeeService
 from src.modules.embeddings.service import GeminiEmbeddingService
 
@@ -39,7 +39,7 @@ def get_service(
 ) -> EmployeeService:
     return EmployeeService(db, event_bus, embedding_service)
 
-@router.post("/", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=EmployeeRead, status_code=status.HTTP_201_CREATED)
 def create_employee(
     employee: EmployeeCreate, 
     service: EmployeeService = Depends(get_service)
@@ -51,7 +51,7 @@ def create_employee(
     # For now we assume manager_id is valid or let DB error
     return service.create_employee(employee=employee)
 
-@router.get("/", response_model=List[EmployeeRead])
+@router.get("", response_model=List[EmployeeRead])
 def read_employees(skip: int = 0, limit: int = 100, service: EmployeeService = Depends(get_service)):
     return service.get_employees(skip=skip, limit=limit)
 
@@ -64,3 +64,30 @@ def search_employees(
     Search for employees using semantic search on their profile embedding.
     """
     return service.search_employees(query=request.query, limit=request.limit)
+
+@router.post("/text-search", response_model=List[EmployeeRead])
+def search_employees_text(
+    request: EmployeeTextSearchRequest,
+    service: EmployeeService = Depends(get_service)
+):
+    return service.search_employees_text(
+        query=request.query,
+        manager_id=request.manager_id,
+        limit=request.limit
+    )
+
+@router.post("/FindEmployees", response_model=List[EmployeeRead])
+def find_employees(
+    search_params: EmployeeFindRequest,
+    service: EmployeeService = Depends(get_service)
+):
+    """
+    Find employees based on various parameters (manager_id, first_name, last_name, email, nickname).
+    """
+    return service.get_employees_by_params(
+        manager_id=search_params.manager_id,
+        first_name=search_params.first_name,
+        last_name=search_params.last_name,
+        email=search_params.email,
+        nickname=search_params.nickname
+    )

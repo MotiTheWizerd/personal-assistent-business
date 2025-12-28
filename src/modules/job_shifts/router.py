@@ -4,7 +4,7 @@ from typing import List
 from uuid import UUID
 
 from src.database import get_db
-from src.modules.job_shifts.schemas import JobShiftCreate, JobShiftRead, JobShiftSearch
+from src.modules.job_shifts.schemas import JobShiftCreate, JobShiftRead, JobShiftSearch, JobShiftScheduleRead, ScheduleSearch
 from src.modules.job_shifts.service import JobShiftService
 
 def get_service(db: Session = Depends(get_db)) -> JobShiftService:
@@ -24,8 +24,8 @@ def create_shift(
     # In a real app we would verify that manager_id, client_id, employee_id exist
     return service.create_shift(shift=shift)
 
-@router.post("/FindShiftsByEmployee", response_model=List[JobShiftRead])
-def find_shifts_by_employee(
+@router.post("/FindShifts", response_model=List[JobShiftRead])
+def find_shifts(
     search_params: JobShiftSearch,
     service: JobShiftService = Depends(get_service)
 ):
@@ -33,6 +33,18 @@ def find_shifts_by_employee(
         manager_id=search_params.manager_id,
         employee_id=search_params.employee_id,
         client_id=search_params.client_id,
+        start_date=search_params.start_date,
+        end_date=search_params.end_date
+    )
+
+@router.post("/FindSchedule", response_model=List[JobShiftScheduleRead])
+def find_schedule(
+    search_params: ScheduleSearch,
+    service: JobShiftService = Depends(get_service)
+):
+    return service.get_schedule_by_params(
+        manager_id=search_params.manager_id,
+        employee_id=search_params.employee_id,
         start_date=search_params.start_date,
         end_date=search_params.end_date
     )

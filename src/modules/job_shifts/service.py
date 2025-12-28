@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
 from src.modules.job_shifts.models import JobShiftModel
 from src.modules.job_shifts.schemas import JobShiftCreate
@@ -51,4 +51,33 @@ class JobShiftService:
         if client_id:
             query = query.filter(JobShiftModel.client_id == client_id)
             
+        return query.all()
+
+    def get_schedule_by_params(
+        self,
+        manager_id: UUID = None,
+        employee_id: UUID = None,
+        start_date: datetime = None,
+        end_date: datetime = None
+    ) -> list[JobShiftModel]:
+        query = self.db.query(JobShiftModel).options(
+            joinedload(JobShiftModel.client),
+            joinedload(JobShiftModel.employee)
+        )
+
+        if manager_id:
+            query = query.filter(JobShiftModel.manager_id == manager_id)
+        if employee_id:
+            query = query.filter(JobShiftModel.employee_id == employee_id)
+
+        if start_date and end_date:
+            query = query.filter(
+                JobShiftModel.start_date >= start_date,
+                JobShiftModel.start_date <= end_date
+            )
+        elif start_date:
+            query = query.filter(JobShiftModel.start_date >= start_date)
+        elif end_date:
+            query = query.filter(JobShiftModel.start_date <= end_date)
+
         return query.all()
